@@ -25,60 +25,6 @@ module "tagger" {
 `
 
 var tfmodfail = `
-terraform {
-  required_providers {
-    oci = { source = "chainguard-dev/oci" }
-  }
-}
-
-variable "target_repository" {
-  description = "The docker repo into which the image and attestations should be published."
-}
-
-module "versions" {
-  source  = "../../tflib/versions"
-  package = "elixir"
-}
-
-locals {
-  # List of versions to skip
-  # 1.14 is no longer supported
-  # FIXME: remove this once this isnt on the package metadata anymore
-  # TODO: Fix 1.15-1.17
-  ignore_versions = ["1.14", "1.15", "1.16", "1.17"]
-
-  # Create list of versions excluding ignored ones
-  elixir_versions = {
-    for k, v in module.versions.versions :
-    k => v if !contains(local.ignore_versions, v.version)
-  }
-}
-
-module "config" {
-  for_each = local.elixir_versions
-  source   = "./config"
-  extra_packages = [
-    each.key,
-    "busybox", # Elixir depends on some coreutils utility, when this is not here it fails with exec (elixir path) not found
-    "rebar3"   # Need to include most things from the upstream image + environment variable (REBAR_VERSION) is set to a valid version with this
-  ]
-}
-
-module "versioned" {
-  for_each          = local.elixir_versions
-  source            = "../../tflib/publisher"
-  eol               = each.value.eol
-  name              = basename(path.module)
-  target_repository = var.target_repository
-  config            = module.config[each.key].config
-  build-dev         = true
-  main_package      = each.value.main
-  update-repo       = each.value.is_latest
-  # Most external packages need -dev erlang/elixir headers to actually be useful
-  # We fetch the package from the dummy config on config/* so that we can avoid skews if that happens at some point
-  extra_dev_packages = ["erlang-${module.config[each.key].versions.erlang_major_version}-dev"]
-}
-
 module "test-versioned" {
   for_each          = local.elixir_versions
   source            = "./tests"
@@ -98,7 +44,7 @@ module "test-dev-versioned" {
 
 module "tagger" {
   source     = "../../tflib/tagger"
-  depends_on = [lo.tdfest-dev-versioned]
+  depends_on = [module.test-versioned]
   tags       = merge([for v in module.versioned : v.latest_tag_map]...)
 }
 `
