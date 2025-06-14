@@ -55,9 +55,10 @@ func (r *TaggerDependsonRule) Check(runner tflint.Runner) error {
 		},
 	}, nil)
 	if err != nil {
-		return nil
+		return err
 	}
 
+	fmt.Printf("blocks: %#v\n", modules.Blocks)
 	// find the tests and tagger blocks
 	var taggerBlock *hclext.Block
 	testBlocks := make(map[string]*hclext.Block)
@@ -80,6 +81,8 @@ func (r *TaggerDependsonRule) Check(runner tflint.Runner) error {
 		}
 	}
 
+	fmt.Printf("tagger: %#v\n", taggerBlock)
+	fmt.Printf("tests: %#v\n", testBlocks)
 	var checkedTests []string
 	if taggerBlock != nil {
 		traversals := taggerBlock.Body.Attributes["depends_on"].Expr.Variables()
@@ -87,6 +90,7 @@ func (r *TaggerDependsonRule) Check(runner tflint.Runner) error {
 			checkedTests = append(checkedTests, t[1].(hcl.TraverseAttr).Name)
 		}
 	}
+	fmt.Printf("checkedtests: %#v\n", checkedTests)
 
 	for name, test := range testBlocks {
 		if !slices.Contains(checkedTests, name) {
