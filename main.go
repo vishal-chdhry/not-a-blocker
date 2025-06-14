@@ -9,8 +9,8 @@ import (
 func main() {
 	plugin.Serve(&plugin.ServeOpts{
 		RuleSet: &tflint.BuiltinRuleSet{
-			Name:    "not-a-blocker",
-			Version: "main",
+			Name:    "tflint-ruleset-not-a-blocker",
+			Version: "latest",
 			Rules: []tflint.Rule{
 				rules.NewTaggerDependsonRule(),
 			},
