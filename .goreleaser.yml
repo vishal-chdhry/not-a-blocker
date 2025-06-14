@@ -13,6 +13,7 @@ builds:
       - linux_arm64
       - windows_386
       - windows_amd64
+    binary: tflint-ruleset-{{ .ProjectName }}
     hooks:
       post:
         - mkdir -p ./dist/raw
