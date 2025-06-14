@@ -19,7 +19,7 @@ builds:
         - cp "{{ .Path }}" "./dist/raw/{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
 archives:
   - id: zip
-    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    name_template: "tflint-ruleset-{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
     formats:
       - zip
     files:
