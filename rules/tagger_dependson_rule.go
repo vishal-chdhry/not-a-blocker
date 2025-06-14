@@ -76,7 +76,7 @@ func (r *TaggerDependsonRule) Check(runner tflint.Runner) error {
 		}
 
 		for _, label := range block.Labels {
-			if strings.HasPrefix(label, "test-") {
+			if strings.HasPrefix(label, "test") {
 				testBlocks[label] = block
 			}
 		}
@@ -85,12 +85,29 @@ func (r *TaggerDependsonRule) Check(runner tflint.Runner) error {
 	logger.Debug("tagger found", "data", fmt.Sprintf("%#v", taggerBlock))
 	logger.Debug("test blocks found", "data", fmt.Sprintf("%#v\n", testBlocks))
 
+	if taggerBlock == nil {
+		return nil
+	}
+
 	var checkedTests []string
-	if taggerBlock != nil {
-		traversals := taggerBlock.Body.Attributes["depends_on"].Expr.Variables()
-		for _, t := range traversals {
-			checkedTests = append(checkedTests, t[1].(hcl.TraverseAttr).Name)
+	dependsOn, ok := taggerBlock.Body.Attributes["depends_on"]
+	if !ok && len(testBlocks) > 0 {
+		for name, test := range testBlocks {
+			err := runner.EmitIssue(
+				r,
+				fmt.Sprintf("test: %s is present but tagger has no depends_on attribute", name),
+				test.DefRange(),
+			)
+			if err != nil {
+				logger.Error("failed to emit issue", "error", err)
+				return err
+			}
 		}
+	}
+
+	traversals := dependsOn.Expr.Variables()
+	for _, t := range traversals {
+		checkedTests = append(checkedTests, t[1].(hcl.TraverseAttr).Name)
 	}
 
 	logger.Debug("checked tests", "data", fmt.Sprintf("%#v\n", checkedTests))
