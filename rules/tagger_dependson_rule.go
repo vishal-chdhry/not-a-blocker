@@ -103,6 +103,7 @@ func (r *TaggerDependsonRule) Check(runner tflint.Runner) error {
 				return err
 			}
 		}
+		return nil
 	}
 
 	traversals := dependsOn.Expr.Variables()
