@@ -13,10 +13,11 @@ builds:
       - linux_arm64
       - windows_386
       - windows_amd64
+    binary: tflint-ruleset-{{ .ProjectName }}
     hooks:
       post:
         - mkdir -p ./dist/raw
-        - cp "{{ .Path }}" "./dist/raw/{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+        - cp "{{ .Path }}" "./dist/raw/tflint-ruleset-{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
 archives:
   - id: zip
     name_template: "tflint-ruleset-{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"

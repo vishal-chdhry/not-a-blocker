@@ -6,7 +6,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/terraform-linters/tflint-plugin-sdk/hclext"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/terraform-linters/tflint-plugin-sdk/logger"
 	"github.com/terraform-linters/tflint-plugin-sdk/tflint"
 )
 
@@ -42,30 +43,35 @@ func (r *TaggerDependsonRule) Link() string {
 
 // Check checks whether ...
 func (r *TaggerDependsonRule) Check(runner tflint.Runner) error {
-	// collect all resources under module.tagger
-	modules, err := runner.GetModuleContent(&hclext.BodySchema{
-		Blocks: []hclext.BlockSchema{
-			{
-				Type:       "module",
-				LabelNames: []string{"*"},
-				Body: &hclext.BodySchema{
-					Mode: hclext.SchemaJustAttributesMode,
-				},
-			},
-		},
-	}, nil)
+	logger.Debug("checking rule", "name", r.Name())
+	var blocks hclsyntax.Blocks
+
+	files, err := runner.GetFiles()
 	if err != nil {
-		return nil
+		logger.Error("failed to fetch files", "error", err)
+		return err
 	}
 
+	for _, file := range files {
+		b := file.Body.(*hclsyntax.Body).Blocks
+		blocks = append(blocks, b...)
+	}
+
+	logger.Debug("blocks found", "count", len(blocks))
+
 	// find the tests and tagger blocks
-	var taggerBlock *hclext.Block
-	testBlocks := make(map[string]*hclext.Block)
-	for _, block := range modules.Blocks {
+	var taggerBlock *hclsyntax.Block
+	testBlocks := make(map[string]*hclsyntax.Block)
+	for _, block := range blocks {
+		if block.Type != "module" {
+			continue
+		}
+
 		if slices.Contains(block.Labels, "tagger") {
 			var src string
 			err := runner.EvaluateExpr(block.Body.Attributes["source"].Expr, &src, nil)
 			if err != nil {
+				logger.Error("failed to evaluate tagger source value", "error", err)
 				return err
 			}
 			if strings.Contains(src, "/tflib/tagger") {
@@ -74,31 +80,59 @@ func (r *TaggerDependsonRule) Check(runner tflint.Runner) error {
 		}
 
 		for _, label := range block.Labels {
-			if strings.HasPrefix(label, "test-") {
+			if strings.HasPrefix(label, "test") {
 				testBlocks[label] = block
 			}
 		}
 	}
 
-	var checkedTests []string
-	if taggerBlock != nil {
-		traversals := taggerBlock.Body.Attributes["depends_on"].Expr.Variables()
-		for _, t := range traversals {
-			checkedTests = append(checkedTests, t[1].(hcl.TraverseAttr).Name)
-		}
+	logger.Debug("tagger found", "data", fmt.Sprintf("%#v", taggerBlock))
+	logger.Debug("test blocks found", "data", fmt.Sprintf("%#v\n", testBlocks))
+
+	if taggerBlock == nil {
+		return nil
 	}
+
+	var checkedTests []string
+	dependsOn, ok := taggerBlock.Body.Attributes["depends_on"]
+	if !ok {
+		if len(testBlocks) > 0 {
+			for name, test := range testBlocks {
+				err := runner.EmitIssue(
+					r,
+					fmt.Sprintf("test: %s is present but tagger has no depends_on attribute", name),
+					test.DefRange(),
+				)
+				if err != nil {
+					logger.Error("failed to emit issue", "error", err)
+					return err
+				}
+			}
+		}
+		return nil // dont worry about the case with no depends_on and tests
+	}
+
+	traversals := dependsOn.Expr.Variables()
+	for _, t := range traversals {
+		checkedTests = append(checkedTests, t[1].(hcl.TraverseAttr).Name)
+	}
+
+	logger.Debug("checked tests", "data", fmt.Sprintf("%#v\n", checkedTests))
 
 	for name, test := range testBlocks {
 		if !slices.Contains(checkedTests, name) {
 			err := runner.EmitIssue(
 				r,
 				fmt.Sprintf("test: %s is not mentioned in tagger's depends_on", name),
-				test.DefRange,
+				test.DefRange(),
 			)
 			if err != nil {
+				logger.Error("failed to emit issue", "error", err)
 				return err
 			}
 		}
 	}
+
+	logger.Debug("exiting rule", "name", r.Name())
 	return nil
 }

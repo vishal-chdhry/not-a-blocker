@@ -68,7 +68,7 @@ func Test_TerraformBackendType(t *testing.T) {
 					Rule:    rules.NewTaggerDependsonRule(),
 					Message: "test: test-dev-versioned is not mentioned in tagger's depends_on",
 					Range: hcl.Range{
-						Filename: "resource.tf",
+						Filename: "main.tf",
 						Start:    hcl.Pos{Line: 10, Column: 1},
 						End:      hcl.Pos{Line: 10, Column: 28},
 					},
@@ -81,7 +81,7 @@ func Test_TerraformBackendType(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
-			runner := helper.TestRunner(t, map[string]string{"resource.tf": test.Content})
+			runner := helper.TestRunner(t, map[string]string{"main.tf": test.Content})
 
 			if err := rule.Check(runner); err != nil {
 				t.Fatalf("Unexpected error occurred: %s", err)
