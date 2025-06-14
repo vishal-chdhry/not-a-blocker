@@ -63,6 +63,10 @@ func (r *TaggerDependsonRule) Check(runner tflint.Runner) error {
 	var taggerBlock *hclsyntax.Block
 	testBlocks := make(map[string]*hclsyntax.Block)
 	for _, block := range blocks {
+		if block.Type != "module" {
+			continue
+		}
+
 		if slices.Contains(block.Labels, "tagger") {
 			var src string
 			err := runner.EvaluateExpr(block.Body.Attributes["source"].Expr, &src, nil)
