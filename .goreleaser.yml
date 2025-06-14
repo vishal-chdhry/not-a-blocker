@@ -16,7 +16,7 @@ builds:
     hooks:
       post:
         - mkdir -p ./dist/raw
-        - cp "{{ .Path }}" "./dist/raw/{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+        - cp "{{ .Path }}" "./dist/raw/tflint-ruleset-{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
 archives:
   - id: zip
     name_template: "tflint-ruleset-{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
