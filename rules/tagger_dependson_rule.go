@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/terraform-linters/tflint-plugin-sdk/hclext"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/terraform-linters/tflint-plugin-sdk/logger"
 	"github.com/terraform-linters/tflint-plugin-sdk/tflint"
 )
@@ -44,29 +44,25 @@ func (r *TaggerDependsonRule) Link() string {
 // Check checks whether ...
 func (r *TaggerDependsonRule) Check(runner tflint.Runner) error {
 	logger.Debug("checking rule", "name", r.Name())
-	// collect all resources under module.tagger
-	modules, err := runner.GetModuleContent(&hclext.BodySchema{
-		Blocks: []hclext.BlockSchema{
-			{
-				Type:       "module",
-				LabelNames: []string{"*"},
-				Body: &hclext.BodySchema{
-					Mode: hclext.SchemaJustAttributesMode,
-				},
-			},
-		},
-	}, nil)
+	var blocks hclsyntax.Blocks
+
+	files, err := runner.GetFiles()
 	if err != nil {
-		logger.Error("failed to get module contents", "error", err)
+		logger.Error("failed to fetch files", "error", err)
 		return err
 	}
 
-	logger.Debug("blocks found", "count", len(modules.Blocks))
+	for _, file := range files {
+		b := file.Body.(*hclsyntax.Body).Blocks
+		blocks = append(blocks, b...)
+	}
+
+	logger.Debug("blocks found", "count", len(blocks))
 
 	// find the tests and tagger blocks
-	var taggerBlock *hclext.Block
-	testBlocks := make(map[string]*hclext.Block)
-	for _, block := range modules.Blocks {
+	var taggerBlock *hclsyntax.Block
+	testBlocks := make(map[string]*hclsyntax.Block)
+	for _, block := range blocks {
 		if slices.Contains(block.Labels, "tagger") {
 			var src string
 			err := runner.EvaluateExpr(block.Body.Attributes["source"].Expr, &src, nil)
@@ -104,7 +100,7 @@ func (r *TaggerDependsonRule) Check(runner tflint.Runner) error {
 			err := runner.EmitIssue(
 				r,
 				fmt.Sprintf("test: %s is not mentioned in tagger's depends_on", name),
-				test.DefRange,
+				test.DefRange(),
 			)
 			if err != nil {
 				logger.Error("failed to emit issue", "error", err)
