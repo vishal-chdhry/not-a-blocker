@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/terraform-linters/tflint-plugin-sdk/hclext"
+	"github.com/terraform-linters/tflint-plugin-sdk/logger"
 	"github.com/terraform-linters/tflint-plugin-sdk/tflint"
 )
 
@@ -42,6 +43,7 @@ func (r *TaggerDependsonRule) Link() string {
 
 // Check checks whether ...
 func (r *TaggerDependsonRule) Check(runner tflint.Runner) error {
+	logger.Debug("checking rule", "name", r.Name())
 	// collect all resources under module.tagger
 	modules, err := runner.GetModuleContent(&hclext.BodySchema{
 		Blocks: []hclext.BlockSchema{
@@ -55,10 +57,12 @@ func (r *TaggerDependsonRule) Check(runner tflint.Runner) error {
 		},
 	}, nil)
 	if err != nil {
+		logger.Error("failed to get module contents", "error", err)
 		return err
 	}
 
-	fmt.Printf("blocks: %#v\n", modules.Blocks)
+	logger.Debug("blocks found", "count", len(modules.Blocks))
+
 	// find the tests and tagger blocks
 	var taggerBlock *hclext.Block
 	testBlocks := make(map[string]*hclext.Block)
@@ -67,6 +71,7 @@ func (r *TaggerDependsonRule) Check(runner tflint.Runner) error {
 			var src string
 			err := runner.EvaluateExpr(block.Body.Attributes["source"].Expr, &src, nil)
 			if err != nil {
+				logger.Error("failed to evaluate tagger source value", "error", err)
 				return err
 			}
 			if strings.Contains(src, "/tflib/tagger") {
@@ -81,8 +86,9 @@ func (r *TaggerDependsonRule) Check(runner tflint.Runner) error {
 		}
 	}
 
-	fmt.Printf("tagger: %#v\n", taggerBlock)
-	fmt.Printf("tests: %#v\n", testBlocks)
+	logger.Debug("tagger found", "data", fmt.Sprintf("%#v", taggerBlock))
+	logger.Debug("test blocks found", "data", fmt.Sprintf("%#v\n", testBlocks))
+
 	var checkedTests []string
 	if taggerBlock != nil {
 		traversals := taggerBlock.Body.Attributes["depends_on"].Expr.Variables()
@@ -90,7 +96,8 @@ func (r *TaggerDependsonRule) Check(runner tflint.Runner) error {
 			checkedTests = append(checkedTests, t[1].(hcl.TraverseAttr).Name)
 		}
 	}
-	fmt.Printf("checkedtests: %#v\n", checkedTests)
+
+	logger.Debug("checked tests", "data", fmt.Sprintf("%#v\n", checkedTests))
 
 	for name, test := range testBlocks {
 		if !slices.Contains(checkedTests, name) {
@@ -100,9 +107,12 @@ func (r *TaggerDependsonRule) Check(runner tflint.Runner) error {
 				test.DefRange,
 			)
 			if err != nil {
+				logger.Error("failed to emit issue", "error", err)
 				return err
 			}
 		}
 	}
+
+	logger.Debug("exiting rule", "name", r.Name())
 	return nil
 }
