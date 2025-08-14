@@ -2,6 +2,7 @@ package rules
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -147,7 +148,7 @@ func (r *OneTaggerPerRepoRule) Check(runner tflint.Runner) error {
 		taggerFileName := tags.Expr.Range().Filename
 		tagsExpr := string(tags.Expr.Range().SliceBytes(files[taggerFileName].Bytes))
 		for publisher, pubBlock := range publisherBlocks {
-			if strings.Contains(tagsExpr, fmt.Sprintf("module.%s.", publisher)) {
+			if regexp.MustCompile(fmt.Sprintf(`module\.%s[\[.)]`, publisher)).MatchString(tagsExpr) {
 				if currentTagger, found := publisherToTagger[publisher]; !found {
 					publisherToTagger[publisher] = taggerName
 				} else {
