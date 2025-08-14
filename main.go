@@ -13,6 +13,7 @@ func main() {
 			Version: "latest",
 			Rules: []tflint.Rule{
 				rules.NewTaggerDependsonRule(),
+				rules.NewOneTaggerPerRepoRule(),
 			},
 		},
 	})
