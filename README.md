@@ -37,3 +37,11 @@ TFlint provides a environment variable `TFLINT_LOG` to enable logging, set its v
 ```sh
 docker run --rm -e TFLINT_LOG="INFO" -v $(pwd):/data -t --entrypoint /bin/sh ghcr.io/terraform-linters/tflint -c "tflint --init && tflint --recursive --chdir=images --config=/data/.tflint.hcl"
 ```
+
+## Development
+
+### Adding Rules
+Create a new rule in `rules/` directory and add it to the `main` function.
+
+### New release
+Create a new tag with format `v*.*.*`. The release process will be triggered. To use the release, update the `.tflint.hcl` file to point to the new tag
