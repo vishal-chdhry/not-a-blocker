@@ -8,7 +8,7 @@ import (
 	"github.com/vishal-chdhry/not-a-blocker/rules"
 )
 
-var tfmodpass = `
+var tagger_dependson_tfmodpass = `
 module "test-versioned" {
   for_each          = local.elixir_versions
   source            = "./tests"
@@ -24,7 +24,7 @@ module "tagger" {
 }
 `
 
-var tfmodfail = `
+var tagger_dependson_tfmodfail = `
 module "test-versioned" {
   for_each          = local.elixir_versions
   source            = "./tests"
@@ -49,7 +49,7 @@ module "tagger" {
 }
 `
 
-func Test_TerraformBackendType(t *testing.T) {
+func Test_TerraformTaggerDependsOn(t *testing.T) {
 	tests := []struct {
 		Name     string
 		Content  string
@@ -57,12 +57,12 @@ func Test_TerraformBackendType(t *testing.T) {
 	}{
 		{
 			Name:     "pass test",
-			Content:  tfmodpass,
+			Content:  tagger_dependson_tfmodpass,
 			Expected: helper.Issues{},
 		},
 		{
 			Name:    "fail test",
-			Content: tfmodfail,
+			Content: tagger_dependson_tfmodfail,
 			Expected: helper.Issues{
 				{
 					Rule:    rules.NewTaggerDependsonRule(),
