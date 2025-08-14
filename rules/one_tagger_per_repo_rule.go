@@ -147,7 +147,7 @@ func (r *OneTaggerPerRepoRule) Check(runner tflint.Runner) error {
 		taggerFileName := tags.Expr.Range().Filename
 		tagsExpr := string(tags.Expr.Range().SliceBytes(files[taggerFileName].Bytes))
 		for publisher, pubBlock := range publisherBlocks {
-			if strings.Contains(tagsExpr, "module."+publisher) {
+			if strings.Contains(tagsExpr, fmt.Sprintf("module.%s.", publisher)) {
 				if currentTagger, found := publisherToTagger[publisher]; !found {
 					publisherToTagger[publisher] = taggerName
 				} else {
@@ -170,7 +170,10 @@ func (r *OneTaggerPerRepoRule) Check(runner tflint.Runner) error {
 
 	for targetRepo, publishers := range targetRepoToPublishers {
 		for _, publisher := range publishers {
-			tagger := publisherToTagger[publisher]
+			tagger, found := publisherToTagger[publisher]
+			if !found {
+				continue // throwaway publisher
+			}
 			if currentTagger, found := targetRepoToTagger[targetRepo]; !found {
 				targetRepoToTagger[targetRepo] = tagger
 			} else if currentTagger != tagger {
